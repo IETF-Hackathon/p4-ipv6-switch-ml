@@ -49,8 +49,19 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata_t meta,
     }
     state parse_udp {
         packet.extract(hdr.udp);
-        transition accept;	
+        transition parse_ml;
     }
+    state parse_ml {
+        packet.extract(hdr.ml);
+	transition parse_ml_vector;
+    }
+    state parse_ml_vector {
+        packet.extract(hdr.vector.next);
+	transition select(hdr.vector.last.e) {
+            _: accept;
+        }
+    }
+
 }
 
 // Our switch table comprises of IPv6 addresses vs. egress_port.
