@@ -57,6 +57,10 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata_t meta,
 // This is the table we setup here.
 control ingress(inout headers hdr, inout metadata_t meta,
                 inout standard_metadata_t standard_metadata) {
+
+    aggregator_t[S] pool;
+    count_t[S]      count;
+
     action set_mcast_grp(bit<16> mcast_grp, bit<9> port) {
         standard_metadata.mcast_grp = mcast_grp;
 	meta.egress_port = port;
@@ -67,11 +71,36 @@ control ingress(inout headers hdr, inout metadata_t meta,
 	}
 	actions = {set_mcast_grp;}
     }
-
+    /* TODO: The paper does not mention what IP (unicast or multicast is a
+     * worker update sent to the switch. Once it's known, this table should
+     * be activated.
+    table ipv6_rx {
+	key = {
+            (hdr.ipv6.srcAddr[127:120] == 8w0xff) : exact @name("rx_key");
+	}
+	actions = {set_mcast_grp;}
+    }
+    */
     apply {
         if (hdr.ipv6.isValid()) {
 	    ipv6_tbl.apply();
         }
+	/*
+         * A SwitchML switch provides a pool of s integer aggregators, addressable
+         * by index.
+	 */
+         // TODO: vector addition - P4 has no for loop.
+         // Need to implement later.  Hard-coding
+         // first element in vector to compile code.
+         pool[hdr.ml.idx].val = pool[hdr.ml.idx].val + hdr.vector[0].e;
+         count[hdr.ml.idx].cnt = count[hdr.ml.idx].cnt + 1;
+         if (count[hdr.ml.idx].cnt == N) {
+             hdr.vector[0].e = pool[hdr.ml.idx].val;
+             pool[hdr.ml.idx] = {0};
+             count[hdr.ml.idx] = {0};
+             // multicast packet occurs in egress control.
+         } else
+             mark_to_drop(standard_metadata);
     }
 }
 
