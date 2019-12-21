@@ -103,8 +103,8 @@ control ingress(inout headers hdr, inout metadata_t meta,
          // TODO: vector addition - P4 has no for loop.
          // Need to implement later.  Hard-coding
          // first element in vector to compile code.
-         pool[hdr.ml.idx].val += hdr.vector[0].e;
-         count[hdr.ml.idx].cnt += 1;
+         pool[hdr.ml.idx].val = pool[hdr.ml.idx].val + hdr.vector[0].e;
+         count[hdr.ml.idx].cnt = count[hdr.ml.idx].cnt + 1;
          if (count[hdr.ml.idx].cnt == N) {
              hdr.vector[0].e = pool[hdr.ml.idx].val;
              pool[hdr.ml.idx] = {0};
